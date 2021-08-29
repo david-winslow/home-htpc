@@ -1,0 +1,104 @@
+version: "3.9"
+
+
+
+x-app: &default-services
+  restart: unless-stopped
+  environment:
+      - PUID=${PUID} # default user id, defined in .env
+      - PGID=${PGID} # default group id, defined in .env
+      - TZ=${TZ} # timezone, defined in .env
+      - ADVERTISE_IP="https://plex.winslow.co.za:443"
+
+services:
+
+  traefik:
+      # The latest official supported Traefik docker image
+      image: traefik:latest
+      # Enables the Traefik Dashboard and tells Traefik to listen to docker
+      # enable --log.level=INFO so we can see what Traefik is doing in the log files
+      ports:
+        # Exposes port 80 for incomming web requests
+        - "80:80"
+        - "443:443"
+        # The Web UI port http://0.0.0.0:8080 (enabled by --api.insecure=true)
+        - "8080:8080"
+      restart: unless-stopped
+      volumes:
+        # So that Traefik can listen to the Docker events
+        - /var/run/docker.sock:/var/run/docker.sock
+        # Copies the Let's Encrypt certificate locally for ease of backing up
+        - ./letsencrypt:/letsencrypt
+        # Mounts the Traefik static configuration inside the Traefik container
+        - ./traefik.yml:/etc/traefik/traefik.yml
+
+  nzbget:
+    <<: *default-services
+    container_name: nzbget
+    image: linuxserver/nzbget:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nzbget.rule=Host(`downloads.winslow.co.za`)"
+      - "traefik.http.routers.nzbget.service=nzbget"
+      - "traefik.http.services.nzbget.loadbalancer.server.port=6789"
+      - "traefik.http.routers.nzbget.entrypoints=websecure"
+      - "traefik.http.routers.nzbget.tls.certresolver=myresolver"
+    volumes:
+      - ${ROOT}/downloads:/downloads # download folder
+      - ${ROOT}/config/nzbget:/config # config files
+      - ${ROOT}/complete/movies:/movies # movies folder
+      - ${ROOT}/complete/tv:/tv # tv folder
+      - ${ROOT}/complete/sport:/sport # sport folder
+
+  sonarr:
+    <<: *default-services
+    container_name: sonarr
+    image: linuxserver/sonarr:latest
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/config/sonarr:/config # config files
+      - ${ROOT}/complete/tv:/tv # tv shows folder
+      - ${ROOT}/downloads:/downloads # download folder
+    labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.sonarr.rule=Host(`series.winslow.co.za`)"
+          - "traefik.http.routers.sonarr.service=sonarr"
+          - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+          - "traefik.http.routers.sonarr.entrypoints=websecure"
+          - "traefik.http.routers.sonarr.tls.certresolver=myresolver"
+  radarr:
+    <<: *default-services
+    container_name: radarr
+    image: linuxserver/radarr:latest
+    labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.radarr.rule=Host(`movies.winslow.co.za`)"
+          - "traefik.http.routers.radarr.service=radarr"
+          - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+          - "traefik.http.routers.radarr.entrypoints=websecure"
+          - "traefik.http.routers.radarr.tls.certresolver=myresolver"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ${ROOT}/config/radarr:/config # config files
+      - ${ROOT}/complete/movies:/movies # movies folder
+
+  plex:
+    <<: *default-services
+    container_name: plex-server
+    image: linuxserver/plex:latest
+    ports: 
+        - 32400:32400
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.plex.rule=Host(`plex.winslow.co.za`)"
+        - "traefik.http.routers.plex.service=plex"
+        - "traefik.http.services.plex.loadbalancer.server.port=32400"
+        - "traefik.http.routers.plex.entrypoints=websecure"
+        - "traefik.http.routers.plex.tls.certresolver=myresolver"
+    volumes:
+      - ${ROOT}/config/plex/db:/config # plex database
+      - ${ROOT}/config/plex/transcode:/transcode # temp transcoded files
+      - ${ROOT}/complete/movies:/movies # movies folder
+      - ${ROOT}/complete/tv:/tv # tv foldr
+      - ${ROOT}/complete/sport:/sport # sport folder
+    
