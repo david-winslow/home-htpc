@@ -24,6 +24,10 @@ log:
 ################################################################
 entryPoints:
   web:
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
     address: ":80"
   websecure:
     address: ":443"
