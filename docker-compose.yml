@@ -101,4 +101,15 @@ services:
       - ${ROOT}/complete/movies:/movies # movies folder
       - ${ROOT}/complete/tv:/tv # tv foldr
       - ${ROOT}/complete/sport:/sport # sport folder
-    
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+ 
+networks:
+  default:
+    external:  true
+    name: proxy

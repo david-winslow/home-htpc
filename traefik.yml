@@ -43,3 +43,5 @@ certificatesResolvers:
       tlsChallenge: true
         # # used during the challenge
         # entryPoint: web
+pilot:
+    token: "1257bad7-c978-43d0-bb94-105db2284d9b"
