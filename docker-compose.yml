@@ -44,11 +44,13 @@ services:
       - "traefik.http.routers.nzbget.entrypoints=websecure"
       - "traefik.http.routers.nzbget.tls.certresolver=myresolver"
     volumes:
-      - ${ROOT}/downloads:/downloads # download folder
-      - ${ROOT}/config/nzbget:/config # config files
-      - ${ROOT}/complete/movies:/movies # movies folder
-      - ${ROOT}/complete/tv:/tv # tv folder
-      - ${ROOT}/complete/sport:/sport # sport folder
+      - /media/downloads:/downloads # download folder
+      - ./config/nzbget:/config # config files
+      - /media/movies:/movies 
+      - /media/tv:/tv 
+      - /media/sport:/sport 
+      - /media/music:/music 
+
 
   sonarr:
     <<: *default-services
@@ -56,9 +58,8 @@ services:
     image: linuxserver/sonarr:latest
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/config/sonarr:/config # config files
-      - ${ROOT}/complete/tv:/tv # tv shows folder
-      - ${ROOT}/downloads:/downloads # download folder
+      - ./config/sonarr:/config # config files
+      - /media/tv:/tv # tv shows folder
     labels:
           - "traefik.enable=true"
           - "traefik.http.routers.sonarr.rule=Host(`series.winslow.co.za`)"
@@ -79,8 +80,8 @@ services:
           - "traefik.http.routers.radarr.tls.certresolver=myresolver"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - ${ROOT}/config/radarr:/config # config files
-      - ${ROOT}/complete/movies:/movies # movies folder
+      - ./config/radarr:/config # config files
+      - /media/movies:/movies # movies folder
 
   plex:
     <<: *default-services
@@ -96,11 +97,12 @@ services:
         - "traefik.http.routers.plex.entrypoints=websecure"
         - "traefik.http.routers.plex.tls.certresolver=myresolver"
     volumes:
-      - ${ROOT}/config/plex/db:/config # plex database
-      - ${ROOT}/config/plex/transcode:/transcode # temp transcoded files
-      - ${ROOT}/complete/movies:/movies # movies folder
-      - ${ROOT}/complete/tv:/tv # tv foldr
-      - ${ROOT}/complete/sport:/sport # sport folder
+      - ./config/plex/db:/config # plex database
+      - ./config/plex/transcode:/transcode # temp transcoded files
+      - /media/movies:/movies 
+      - /media/tv:/tv 
+      - /media/sport:/sport 
+      - /media/music:/music 
 
   watchtower:
     image: containrrr/watchtower:latest
@@ -108,7 +110,28 @@ services:
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
- 
+  
+  transmission:
+    <<: *default-services
+    image: lscr.io/linuxserver/transmission
+    container_name: transmission
+    labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.transmission.rule=Host(`transmission.winslow.co.za`)"
+        - "traefik.http.routers.transmission.service=transmission"
+        - "traefik.http.services.transmission.loadbalancer.server.port=9091"
+        - "traefik.http.routers.transmission.entrypoints=websecure"
+        - "traefik.http.routers.transmission.tls.certresolver=myresolver"
+    volumes:
+      - /config/transmission:/config
+      - /media:/downloads
+      - /media/watch:/watch
+    ports:
+      - 9091:9091
+      - 51413:51413
+      - 51413:51413/udp
+    restart: unless-stopped
+
 networks:
   default:
     external:  true
